@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Apple AI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a, #065f46);
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: white;
+}
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 50px;
+}
+
+.navbar h2 {
+  color: #dc2626;
+}
+
+/* ✅ BUTTON STYLE NAV LINKS */
+.nav-links a {
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border-radius: 20px;
+  text-decoration: none;
+  margin-left: 10px;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.nav-links a:hover {
+  background: #22c55e;
+}
+
+/* HERO */
+.hero {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 50px;
+  margin-bottom: 10px;
+}
+
+.hero p {
+  margin-bottom: 20px;
+  color: #e2e8f0;
+}
+
+/* BUTTON */
+.btn {
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none;
+  border-radius: 30px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+/* 🍎 APPLES */
+.apple {
+  position: absolute;
+  top: -50px;
+  width: 40px;
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  to { transform: translateY(100vh); }
+}
+
+
+.logo {
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.3s ease, text-shadow 0.3s ease;
+}
+
+/* 🔥 Hover effect for full text */
+.logo:hover {
+  transform: scale(1.1) rotate(-2deg);
+  text-shadow: 0 0 10px #22c55e;
+}
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+  <h2 class="logo">
+  🍎 Apple AI
+  </h2>
+  <div class="nav-links">
+    <a href="/login">Login</a>
+    <a href="/signup">Signup</a>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Apple Disease Detection</h1>
+  <p>AI-powered system to detect apple diseases instantly</p>
+  <a href="/login"><button class="btn">Get Started</button></a>
+</div>
+
+<!-- 🍎 FALLING APPLES -->
+<script>
+for(let i=0;i<10;i++){
+  let apple=document.createElement("img");
+  apple.src="https://cdn-icons-png.flaticon.com/512/415/415733.png";
+  apple.className="apple";
+
+  apple.style.left=Math.random()*100+"vw";
+  apple.style.animationDuration=(6+Math.random()*4)+"s";
+  apple.style.animationDelay=Math.random()*5+"s";
+
+  document.body.appendChild(apple);
+}
+</script>
+
+</body>
+</html>

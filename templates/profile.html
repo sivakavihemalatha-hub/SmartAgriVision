@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="text-align:center;">Profile</h2>
+
+<div class="card form-box">
+
+    <!-- PROFILE IMAGE -->
+    {% if profile_pic %}
+        <img src="/{{ profile_pic }}" 
+             style="width:120px; height:120px; border-radius:50%; object-fit:cover;">
+    {% else %}
+        <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+             style="width:120px;">
+    {% endif %}
+
+    <h3>{{ username }}</h3>
+    <p>{{ email }}</p>
+
+    <!-- 🔥 IMPORTANT -->
+    <form method="POST" action="/upload_profile" enctype="multipart/form-data">
+        <input type="file" name="photo" required>
+        <button class="btn-primary">Update Profile</button>
+    </form>
+
+</div>
+
+{% endblock %}

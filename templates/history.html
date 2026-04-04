@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="text-align:center; margin-bottom:20px;">
+Your Prediction History
+</h2>
+
+{% if history|length == 0 %}
+<p style="text-align:center;">No history yet. Upload an image first.</p>
+{% endif %}
+
+<div class="grid" style="margin-top:20px;">
+
+  {% for item in history %}
+  <div class="card" style="text-align:center;">
+
+    <!-- 🖼 IMAGE -->
+    <img src="/{{ item['image'] }}" 
+         style="width:100%; height:180px; object-fit:cover; border-radius:10px;">
+
+    <!-- 📊 PREDICTION -->
+    <h3 style="margin-top:10px;">
+        {{ item['prediction'] }}
+    </h3>
+
+    <!-- 📊 CONFIDENCE -->
+    <p><b>Confidence:</b> {{ item['confidence'] }}</p>
+
+    <!-- 📅 DATE -->
+    <p style="font-size:14px;">
+        {{ item['date'] }}
+    </p>
+
+  </div>
+  {% endfor %}
+
+</div>
+
+{% endblock %}

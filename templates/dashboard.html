@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Dashboard</h2>
+
+<div class="card" style="max-width:500px;">
+<form method="POST" action="/upload" enctype="multipart/form-data">
+<input type="file" name="file">
+<button class="btn-primary">Upload & Predict</button>
+</form>
+</div>
+
+{% if image %}
+<div class="card" style="text-align:center;">
+<img src="{{ image }}" width="200">
+<h3>Prediction: {{ prediction }}</h3>
+<h4>Confidence: {{ confidence }}</h4>
+
+<h4 style="margin-top:15px;">Prevention:</h4>
+<p>{{ prevention }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

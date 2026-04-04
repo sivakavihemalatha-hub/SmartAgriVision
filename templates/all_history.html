@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="text-align:center; margin-bottom:20px;">
+All Users History
+</h2>
+
+{% if data|length == 0 %}
+<p style="text-align:center;">No data available</p>
+{% endif %}
+
+<div class="grid" style="margin-top:20px;">
+
+{% for item in data %}
+<div class="card" style="text-align:center;">
+
+    <!-- 👤 USERNAME -->
+    <h3 style="color:#22c55e;">
+        {{ item['username'] }}
+    </h3>
+
+    <!-- 🖼 IMAGE -->
+    <img src="/{{ item['image'] }}" 
+         style="width:100%; height:180px; object-fit:cover; border-radius:10px;">
+
+    <!-- 📊 PREDICTION -->
+    <h4 style="margin-top:10px;">
+        {{ item['prediction'] }}
+    </h4>
+
+    <!-- 📊 CONFIDENCE -->
+    <p><b>Confidence:</b> {{ item['confidence'] }}</p>
+
+    <!-- 📅 DATE -->
+    <p style="font-size:13px; color:#cbd5e1;">
+        {{ item['date'] }}
+    </p>
+
+    <!-- 🔥 DELETE BUTTON -->
+    <a href="/delete/{{ item['id'] }}">
+        <button style="
+            margin-top:10px;
+            padding:10px 15px;
+            background:#ef4444;
+            border:none;
+            border-radius:8px;
+            color:white;
+            cursor:pointer;">
+            Delete
+        </button>
+    </a>
+
+</div>
+{% endfor %}
+
+</div>
+
+{% endblock %}
