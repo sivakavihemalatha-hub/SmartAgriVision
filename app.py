@@ -21,12 +21,14 @@ MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
 
 # ---------------- LOAD MODEL ----------------
 model = None
+
 try:
     model = tf.keras.models.load_model(
         MODEL_PATH,
         compile=False
     )
     print("✅ Model loaded successfully")
+
 except Exception as e:
     print("❌ Model loading failed:", e)
     model = None
