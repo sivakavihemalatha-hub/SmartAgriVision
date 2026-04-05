@@ -142,7 +142,6 @@ def dashboard():
 
     return render_template("dashboard.html")
 
-
 # ---------------- UPLOAD & PREDICT ----------------
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -204,13 +203,15 @@ def upload():
     conn.commit()
     conn.close()
 
-    return render_template(
-        "dashboard.html",
-        image=db_image_path,
-        prediction=prediction,
-        confidence=confidence,
-        prevention=prevention
-    )
+    
+    # session update
+    session["image"] = db_image_path
+    session["prediction"] = prediction
+    session["confidence"] = confidence
+    session["prevention"] = prevention
+
+    # redirect
+    return redirect("/dashboard")
 
 
 # ---------------- HISTORY ----------------
