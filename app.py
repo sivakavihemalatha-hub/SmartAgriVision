@@ -3,7 +3,6 @@ import sqlite3
 import os
 from datetime import datetime
 
-# 🔥 MODEL IMPORTS
 import numpy as np
 from PIL import Image
 import tensorflow as tf
@@ -11,26 +10,28 @@ import tensorflow as tf
 app = Flask(__name__)
 app.secret_key = "secret_key"
 
-UPLOAD_FOLDER = "static/uploads"
+# ---------------- PATH FIX ----------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static/uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 🔥 LOAD MODEL (FIXED - LAZY LOADING)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
 
-model = None
+# ---------------- LOAD MODEL ----------------
+try:
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    print("✅ Model loaded successfully")
+except Exception as e:
+    print("❌ Model loading failed:", e)
+    model = None
 
-def load_model_once():
-    global model
-    if model is None:
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-
+# ---------------- CLASS LABELS ----------------
 class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
 
 
-# ---------------- INIT DATABASE ----------------
+# ---------------- DATABASE INIT ----------------
 def init_db():
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
@@ -55,7 +56,6 @@ def init_db():
         )
     """)
 
-    # 🔥 ADMIN INSERT
     cur.execute("SELECT * FROM users WHERE email=?", ("admin@gmail.com",))
     if not cur.fetchone():
         cur.execute("""
@@ -91,7 +91,6 @@ def login():
         if user:
             session["user_id"] = user[0]
             session["role"] = user[1]
-
             return redirect("/dashboard")
 
         return "Invalid credentials"
@@ -146,19 +145,24 @@ def upload():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
 
-    # 🔥 MODEL PREDICTION
-    load_model_once()   # ✅ FIX ADDED
+    # ❗ CHECK MODEL
+    if model is None:
+        return "Model not loaded"
 
+    # ---------------- IMAGE PREPROCESS ----------------
     img = Image.open(filepath).convert("RGB")
-    img = img.resize((224,224))
+    img = img.resize((224, 224))  # correct size
     img = np.array(img) / 255.0
     img = np.expand_dims(img, axis=0)
 
-    preds = model.predict(img)[0]
+    # ---------------- FIXED PREDICTION (IMPORTANT) ----------------
+    img_tensor = tf.convert_to_tensor(img)
+    preds = model(img_tensor, training=False).numpy()[0]
+
     idx = np.argmax(preds)
 
     prediction = class_names[idx]
-    confidence = str(round(float(np.max(preds))*100, 2)) + "%"
+    confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
 
     prevention_dict = {
         "Anthracnose": "Remove infected parts and use fungicide.",
@@ -170,7 +174,7 @@ def upload():
 
     prevention = prevention_dict[prediction]
 
-    # 🔥 SAVE HISTORY
+    # ---------------- SAVE HISTORY ----------------
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
 
@@ -197,7 +201,7 @@ def upload():
     )
 
 
-# ---------------- USER HISTORY ----------------
+# ---------------- HISTORY ----------------
 @app.route("/history")
 def history():
     if "user_id" not in session:
@@ -280,7 +284,7 @@ def upload_profile():
         return redirect("/profile")
 
     filename = "profile_" + session["user_id"] + ".jpg"
-    filepath = os.path.join("static/uploads", filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
     session["profile_pic"] = filepath
