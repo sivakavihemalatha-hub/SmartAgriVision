@@ -16,13 +16,16 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
-
-# 🔥 LOAD MODEL
+# 🔥 LOAD MODEL (FIXED - LAZY LOADING)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
 
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+model = None
+
+def load_model_once():
+    global model
+    if model is None:
+        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
 
@@ -139,14 +142,14 @@ def upload():
     if file.filename == "":
         return redirect("/dashboard")
 
-    #filename = file.filename
     filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
 
     # 🔥 MODEL PREDICTION
-    img = Image.open(filepath).convert("RGB")
+    load_model_once()   # ✅ FIX ADDED
 
+    img = Image.open(filepath).convert("RGB")
     img = img.resize((224,224))
     img = np.array(img) / 255.0
     img = np.expand_dims(img, axis=0)
