@@ -149,16 +149,21 @@ def dashboard():
 
 
 #--------------- UPLOAD + PREDICT-----------------
-@app.route("/upload", methods=["POST"])
+@app.route("/upload", methods=["GET", "POST"])
 def upload():
+
+    # 🔥 If someone opens /upload directly → redirect
+    if request.method == "GET":
+        return redirect("/dashboard")
+
     try:
         print("🔥 Upload route called")
 
-        # Check login
+        # ✅ Check login
         if "user_id" not in session:
             return redirect("/login")
 
-        # Get file safely
+        # ✅ Get file safely
         file = request.files.get("file")
 
         if file is None:
@@ -169,18 +174,18 @@ def upload():
 
         print("📁 File received:", file.filename)
 
-        # Save file
+        # ✅ Save file
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        print("✅ File saved at:", filepath)
+        print("✅ File saved:", filepath)
 
-        # Check model
+        # ✅ Check model
         if model is None:
             return "❌ Model not loaded"
 
-        # Process image
+        # ✅ Image processing
         img = Image.open(filepath).convert("RGB")
         img = img.resize((224, 224))
         img = np.array(img) / 255.0
@@ -188,6 +193,7 @@ def upload():
 
         print("🧠 Running prediction...")
 
+        # ✅ Prediction
         preds = model.predict(img)[0]
         idx = np.argmax(preds)
 
@@ -197,7 +203,7 @@ def upload():
         print("✅ Prediction:", prediction)
         print("✅ Confidence:", confidence)
 
-        # Prevention
+        # ✅ Prevention tips
         prevention_dict = {
             "Anthracnose": "Remove infected parts and use fungicide.",
             "Black Pox": "Apply fungicide regularly.",
@@ -208,9 +214,10 @@ def upload():
 
         prevention = prevention_dict[prediction]
 
-        # Save to DB
+        # ✅ Path for frontend
         db_image_path = "static/uploads/" + filename
 
+        # ✅ Save to database
         conn = sqlite3.connect("database.db")
         cur = conn.cursor()
 
@@ -230,7 +237,7 @@ def upload():
 
         print("💾 Saved to history")
 
-        # Show result on dashboard
+        # ✅ Show result on dashboard
         return render_template(
             "dashboard.html",
             image=db_image_path,
