@@ -10,17 +10,23 @@ import tensorflow as tf
 app = Flask(__name__)
 app.secret_key = "secret_key"
 
-# ---------------- PATH ----------------
+# ================= PATH SETTINGS =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "static/uploads")
-DB_PATH = os.path.join(BASE_DIR, "database.db")   # ✅ FIXED
 
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static/uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ================= LOAD MODEL =================
 MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
-# ---------------- DATABASE INIT ----------------
+class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
+
+# ================= INIT DATABASE =================
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -48,47 +54,24 @@ def init_db():
     # Default admin
     cur.execute("SELECT * FROM users WHERE email=?", ("admin@gmail.com",))
     if not cur.fetchone():
-        cur.execute("""
-            INSERT INTO users (email, password, role)
-            VALUES (?, ?, ?)
-        """, ("admin@gmail.com", "admin@123", "admin"))
+        cur.execute(
+            "INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
+            ("admin@gmail.com", "admin@123", "admin")
+        )
 
     conn.commit()
     conn.close()
 
-# ✅ Run DB init always
 init_db()
 
-# ---------------- LOAD MODEL ----------------
-model = None
+# ================= ROUTES =================
 
-try:
-    model = tf.keras.models.load_model(
-        MODEL_PATH,
-        compile=False,
-        custom_objects={
-            "Dense": lambda **kwargs: tf.keras.layers.Dense(
-                **{k: v for k, v in kwargs.items() if k != "quantization_config"}
-            )
-        }
-    )
-    print("✅ Model loaded successfully")
-
-except Exception as e:
-    print("❌ Model loading failed:", e)
-    model = None
-
-# ---------------- CLASS LABELS ----------------
-class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
-
-
-# ---------------- HOME ----------------
 @app.route("/")
 def home():
     return render_template("home.html")
 
 
-# ---------------- LOGIN ----------------
+# LOGIN
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -98,15 +81,13 @@ def login():
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
-        cur.execute("SELECT email, role FROM users WHERE email=? AND password=?",
-                    (email, password))
+        cur.execute("SELECT email, role FROM users WHERE email=? AND password=?", (email, password))
         user = cur.fetchone()
         conn.close()
 
         if user:
             session["user_id"] = user[0]
             session["role"] = user[1]
-            session["username"] = user[0]
             return redirect("/dashboard")
 
         return "Invalid credentials or please signup first"
@@ -114,29 +95,24 @@ def login():
     return render_template("login.html")
 
 
-# ---------------- SIGNUP ----------------
+# SIGNUP
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
-        confirm = request.form.get("confirm")
 
-        if not username or not email or not password or not confirm:
-            return "All fields are required"
-
-        if password != confirm:
-            return "Passwords do not match"
+        if not email or not password:
+            return "Fill all fields"
 
         try:
             conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
 
-            cur.execute("""
-                INSERT INTO users (email, password, role)
-                VALUES (?, ?, ?)
-            """, (email, password, "user"))
+            cur.execute(
+                "INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
+                (email, password, "user")
+            )
 
             conn.commit()
             conn.close()
@@ -146,28 +122,19 @@ def signup():
         except sqlite3.IntegrityError:
             return "Email already exists"
 
-        except Exception as e:
-            return f"Signup Error: {str(e)}"
-
     return render_template("signup.html")
 
 
-# ---------------- DASHBOARD ----------------
+# DASHBOARD
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect("/login")
 
-    return render_template(
-        "dashboard.html",
-        image=session.get("image"),
-        prediction=session.get("prediction"),
-        confidence=session.get("confidence"),
-        prevention=session.get("prevention")
-    )
+    return render_template("dashboard.html")
 
 
-# ---------------- UPLOAD ----------------
+# UPLOAD + PREDICT
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
@@ -179,19 +146,18 @@ def upload():
         if file.filename == "":
             return redirect("/dashboard")
 
+        # SAVE FILE
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        if model is None:
-            return "Model not loaded"
-
-        # Image preprocessing
+        # PREPROCESS IMAGE
         img = Image.open(filepath).convert("RGB")
         img = img.resize((224, 224))
         img = np.array(img) / 255.0
         img = np.expand_dims(img, axis=0)
 
+        # PREDICTION
         preds = model.predict(img)[0]
         idx = np.argmax(preds)
 
@@ -208,8 +174,10 @@ def upload():
 
         prevention = prevention_dict[prediction]
 
+        # IMPORTANT PATH
         db_image_path = "static/uploads/" + filename
 
+        # SAVE HISTORY
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
@@ -227,7 +195,7 @@ def upload():
         conn.commit()
         conn.close()
 
-        # Direct render (fix)
+        # SHOW RESULT
         return render_template(
             "dashboard.html",
             image=db_image_path,
@@ -237,10 +205,10 @@ def upload():
         )
 
     except Exception as e:
-        return f"ERROR OCCURRED: {str(e)}"
+        return f"Error: {str(e)}"
 
 
-# ---------------- HISTORY ----------------
+# USER HISTORY
 @app.route("/history")
 def history():
     if "user_id" not in session:
@@ -258,13 +226,13 @@ def history():
     return render_template("history.html", history=rows)
 
 
-# ---------------- ADMIN ----------------
+# ADMIN PANEL
 @app.route("/admin")
 def admin():
     if "user_id" not in session:
         return redirect("/login")
 
-    if session["role"] != "admin":
+    if session.get("role") != "admin":
         return redirect("/dashboard")
 
     conn = sqlite3.connect(DB_PATH)
@@ -276,16 +244,16 @@ def admin():
 
     conn.close()
 
-    return render_template("all_history.html", history=rows)
+    return render_template("all_history.html", data=rows)
 
 
-# ---------------- DELETE ----------------
+# DELETE (ADMIN)
 @app.route("/delete/<int:id>")
 def delete(id):
     if "user_id" not in session:
         return redirect("/login")
 
-    if session["role"] != "admin":
+    if session.get("role") != "admin":
         return redirect("/dashboard")
 
     conn = sqlite3.connect(DB_PATH)
@@ -298,14 +266,51 @@ def delete(id):
     return redirect("/admin")
 
 
-# ---------------- LOGOUT ----------------
+# PROFILE
+@app.route("/profile")
+def profile():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    email = session["user_id"]
+    username = email.split("@")[0]
+
+    return render_template(
+        "profile.html",
+        username=username,
+        email=email,
+        profile_pic=session.get("profile_pic")
+    )
+
+
+# UPLOAD PROFILE IMAGE
+@app.route("/upload_profile", methods=["POST"])
+def upload_profile():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    file = request.files["photo"]
+
+    if file.filename == "":
+        return redirect("/profile")
+
+    filename = "profile_" + session["user_id"] + ".jpg"
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(filepath)
+
+    session["profile_pic"] = "static/uploads/" + filename
+
+    return redirect("/profile")
+
+
+# LOGOUT
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
 
-# ---------------- RUN ----------------
+# ================= RUN (RENDER READY) =================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 10000))  # 🔥 IMPORTANT FOR RENDER
     app.run(host="0.0.0.0", port=port)
