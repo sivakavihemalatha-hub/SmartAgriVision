@@ -22,7 +22,16 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ================= LOAD MODEL =================
 MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+
+model = tf.keras.models.load_model(
+    MODEL_PATH,
+    compile=False,
+    custom_objects={
+        "Dense": lambda **kwargs: tf.keras.layers.Dense(
+            **{k: v for k, v in kwargs.items() if k != "quantization_config"}
+        )
+    }
+)
 
 class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
 
