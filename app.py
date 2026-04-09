@@ -21,14 +21,26 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ================= LOAD MODEL =================
+# ================= LOAD MODEL =================
 MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
 
-if not os.path.exists(MODEL_PATH):
-    print("❌ MODEL FILE NOT FOUND")
+model = None  # IMPORTANT: prevents white page crash
+
+try:
+    model = tf.keras.models.load_model(
+        MODEL_PATH,
+        compile=False,
+        custom_objects={
+            "Dense": lambda **kwargs: tf.keras.layers.Dense(
+                **{k: v for k, v in kwargs.items() if k != "quantization_config"}
+            )
+        }
+    )
+    print("✅ Model loaded successfully")
+
+except Exception as e:
+    print("❌ Model loading failed:", str(e))
     model = None
-else:
-    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-    print("✅ Model loaded")
 
 class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
 
