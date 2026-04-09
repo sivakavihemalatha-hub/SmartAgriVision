@@ -5,7 +5,7 @@
 
 <h2 style="margin-bottom:20px;">Signup</h2>
 
-<form method="POST">
+<form method="POST" onsubmit="return validateSignup()">
 
 <input type="text" name="username" placeholder="Username" required>
 <input type="email" name="email" placeholder="Email" required>
@@ -22,5 +22,19 @@ Already have an account?
 </p>
 
 </div>
+
+<!-- ================= VALIDATION ONLY ================= -->
+<script>
+function validateSignup() {
+    let pass = document.querySelector("input[name='password']").value;
+    let confirm = document.querySelector("input[name='confirm']").value;
+
+    if (pass !== confirm) {
+        alert("❌ Passwords do not match!");
+        return false;
+    }
+    return true;
+}
+</script>
 
 {% endblock %}
