@@ -12,20 +12,21 @@
 </div>
 
 <!-- ================= RESULT SECTION ================= -->
-{% if session.get('image') %}
+
+{% if prediction %}
 
 <div class="card" style="text-align:center;">
 
     <h2>Prediction Result</h2>
 
-    <img src="{{ session.get('image') }}" width="220" style="border-radius:10px;">
+    <img src="{{ image }}" width="220" style="border-radius:10px;">
 
-    <h3>Prediction: {{ session.get('prediction') }}</h3>
+    <h3>Prediction: {{ prediction }}</h3>
 
-    <h4>Confidence: {{ session.get('confidence') }}</h4>
+    <h4>Confidence: {{ confidence }}</h4>
 
     <h4 style="margin-top:15px;">Prevention:</h4>
-    <p>{{ session.get('prevention') }}</p>
+    <p>{{ prevention }}</p>
 
 </div>
 
