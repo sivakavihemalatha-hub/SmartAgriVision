@@ -147,13 +147,25 @@ def signup():
 
 
 # ================= DASHBOARD =================
-# ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect("/login")
 
-    return render_template("dashboard.html")
+    error = session.pop("error", None)
+    image = session.pop("image", None)
+    prediction = session.pop("prediction", None)
+    confidence = session.pop("confidence", None)
+    prevention = session.pop("prevention", None)
+
+    return render_template(
+        "dashboard.html",
+        error=error,
+        image=image,
+        prediction=prediction,
+        confidence=confidence,
+        prevention=prevention
+    )
 
 
 # ================= UPLOAD + PREDICT =================
@@ -163,11 +175,12 @@ def upload():
         return redirect("/login")
 
     try:
-        # ===== FILE CHECK =====
+        # ===== GET FILE =====
         file = request.files.get("file")
 
         if not file or file.filename == "":
-            return render_template("dashboard.html", error="❌ No file selected")
+            session["error"] = "❌ No file selected"
+            return redirect("/dashboard")
 
         # ===== SAVE FILE =====
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
@@ -175,23 +188,27 @@ def upload():
 
         file.save(filepath)
 
+        # ===== CHECK FILE SAVED =====
         if not os.path.exists(filepath):
-            return render_template("dashboard.html", error="❌ File not saved properly")
+            session["error"] = "❌ File not saved properly"
+            return redirect("/dashboard")
 
-        # ===== PREPROCESS =====
+        # ===== PREPROCESS IMAGE =====
         try:
             img = Image.open(filepath).convert("RGB")
             img = img.resize((224, 224))
             img = np.array(img) / 255.0
             img = np.expand_dims(img, axis=0)
         except Exception as e:
-            return render_template("dashboard.html", error=f"❌ Image processing failed: {str(e)}")
+            session["error"] = f"❌ Image processing failed: {str(e)}"
+            return redirect("/dashboard")
 
         # ===== MODEL PREDICTION =====
         try:
             preds = model.predict(img)[0]
         except Exception as e:
-            return render_template("dashboard.html", error=f"❌ Model prediction failed: {str(e)}")
+            session["error"] = f"❌ Model prediction failed: {str(e)}"
+            return redirect("/dashboard")
 
         idx = np.argmax(preds)
 
@@ -210,7 +227,7 @@ def upload():
 
         db_image_path = "static/uploads/" + filename
 
-        # ===== SAVE TO DB =====
+        # ===== SAVE TO DATABASE =====
         try:
             conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
@@ -230,20 +247,21 @@ def upload():
             conn.close()
 
         except Exception as e:
-            return render_template("dashboard.html", error=f"❌ Database error: {str(e)}")
+            session["error"] = f"❌ Database error: {str(e)}"
+            return redirect("/dashboard")
 
-        # ===== SUCCESS RESULT =====
-        return render_template(
-            "dashboard.html",
-            image=db_image_path,
-            prediction=prediction,
-            confidence=confidence,
-            prevention=prevention
-        )
+        # ===== STORE RESULT IN SESSION =====
+        session["image"] = db_image_path
+        session["prediction"] = prediction
+        session["confidence"] = confidence
+        session["prevention"] = prevention
+
+        # ===== REDIRECT TO DASHBOARD =====
+        return redirect("/dashboard")
 
     except Exception as e:
-        return render_template("dashboard.html", error=f"❌ Unexpected error: {str(e)}")
-
+        session["error"] = f"❌ Unexpected error: {str(e)}"
+        return redirect("/dashboard")
 # ================= HISTORY =================
 @app.route("/history")
 def history():
