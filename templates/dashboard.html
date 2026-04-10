@@ -3,14 +3,14 @@
 
 <h2>Dashboard</h2>
 
-<!-- ================= ERROR MESSAGE ================= -->
+<!-- ERROR -->
 {% if error %}
-<div style="background:#dc2626; padding:12px; border-radius:10px; margin-bottom:15px; text-align:center;">
-    {{ error }}
+<div class="card" style="background:#7f1d1d;">
+    <p>{{ error }}</p>
 </div>
 {% endif %}
 
-<!-- ================= UPLOAD FORM ================= -->
+<!-- UPLOAD -->
 <div class="card" style="max-width:500px; margin-bottom:20px;">
     <form method="POST" action="/upload" enctype="multipart/form-data">
         <input type="file" name="file" required>
@@ -18,24 +18,20 @@
     </form>
 </div>
 
-<!-- ================= RESULT SECTION ================= -->
+<!-- RESULT -->
 {% if prediction %}
-
 <div class="card" style="text-align:center;">
 
     <h2>Prediction Result</h2>
 
-    <img src="{{ image }}" width="220" style="border-radius:10px; margin:10px 0;">
+    <img src="{{ image }}" width="220">
 
-    <h3>Prediction: {{ prediction }}</h3>
+    <h3>{{ prediction }}</h3>
+    <h4>{{ confidence }}</h4>
 
-    <h4>Confidence: {{ confidence }}</h4>
-
-    <h4 style="margin-top:15px;">Prevention:</h4>
     <p>{{ prevention }}</p>
 
 </div>
-
 {% endif %}
 
 {% endblock %}
