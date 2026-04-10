@@ -152,69 +152,53 @@ def dashboard():
     if "user_id" not in session:
         return redirect("/login")
 
-    error = session.pop("error", None)
-    image = session.pop("image", None)
-    prediction = session.pop("prediction", None)
-    confidence = session.pop("confidence", None)
-    prevention = session.pop("prevention", None)
-
     return render_template(
         "dashboard.html",
-        error=error,
-        image=image,
-        prediction=prediction,
-        confidence=confidence,
-        prevention=prevention
+        error=session.pop("error", None),
+        image=session.pop("image", None),
+        prediction=session.pop("prediction", None),
+        confidence=session.pop("confidence", None),
+        prevention=session.pop("prevention", None)
     )
 
 
 # ================= UPLOAD + PREDICT =================
 @app.route("/upload", methods=["POST"])
 def upload():
-    if "user_id" not in session:
-        return redirect("/login")
-
     try:
-        # ===== GET FILE =====
+        if "user_id" not in session:
+            return redirect("/login")
+
+        # ✅ CHECK FILE
         file = request.files.get("file")
 
         if not file or file.filename == "":
-            session["error"] = "❌ No file selected"
+            session["error"] = "Please select an image"
             return redirect("/dashboard")
 
-        # ===== SAVE FILE =====
+        # ✅ ENSURE FOLDER EXISTS (VERY IMPORTANT FOR RENDER)
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+        # ✅ SAVE FILE
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-
         file.save(filepath)
 
-        # ===== CHECK FILE SAVED =====
-        if not os.path.exists(filepath):
-            session["error"] = "❌ File not saved properly"
-            return redirect("/dashboard")
+        # ✅ IMAGE PROCESSING
+        img = Image.open(filepath).convert("RGB")
+        img = img.resize((224, 224))
+        img = np.array(img) / 255.0
+        img = np.expand_dims(img, axis=0)
 
-        # ===== PREPROCESS IMAGE =====
-        try:
-            img = Image.open(filepath).convert("RGB")
-            img = img.resize((224, 224))
-            img = np.array(img) / 255.0
-            img = np.expand_dims(img, axis=0)
-        except Exception as e:
-            session["error"] = f"❌ Image processing failed: {str(e)}"
-            return redirect("/dashboard")
-
-        # ===== MODEL PREDICTION =====
-        try:
-            preds = model.predict(img)[0]
-        except Exception as e:
-            session["error"] = f"❌ Model prediction failed: {str(e)}"
-            return redirect("/dashboard")
+        # ✅ MODEL PREDICTION
+        preds = model.predict(img)
+        preds = preds[0]
 
         idx = np.argmax(preds)
-
         prediction = class_names[idx]
         confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
 
+        # ✅ PREVENTION
         prevention_dict = {
             "Anthracnose": "Remove infected parts and use fungicide.",
             "Black Pox": "Apply fungicide regularly.",
@@ -227,40 +211,34 @@ def upload():
 
         db_image_path = "static/uploads/" + filename
 
-        # ===== SAVE TO DATABASE =====
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
+        # ✅ DATABASE SAVE
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
 
-            cur.execute("""
-                INSERT INTO history (username, image, prediction, confidence, date)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                session["user_id"],
-                db_image_path,
-                prediction,
-                confidence,
-                str(datetime.now())
-            ))
+        cur.execute("""
+            INSERT INTO history (username, image, prediction, confidence, date)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            session["user_id"],
+            db_image_path,
+            prediction,
+            confidence,
+            str(datetime.now())
+        ))
 
-            conn.commit()
-            conn.close()
+        conn.commit()
+        conn.close()
 
-        except Exception as e:
-            session["error"] = f"❌ Database error: {str(e)}"
-            return redirect("/dashboard")
-
-        # ===== STORE RESULT IN SESSION =====
+        # ✅ STORE RESULTS IN SESSION
         session["image"] = db_image_path
         session["prediction"] = prediction
         session["confidence"] = confidence
         session["prevention"] = prevention
 
-        # ===== REDIRECT TO DASHBOARD =====
         return redirect("/dashboard")
 
     except Exception as e:
-        session["error"] = f"❌ Unexpected error: {str(e)}"
+        session["error"] = str(e)
         return redirect("/dashboard")
 # ================= HISTORY =================
 @app.route("/history")
