@@ -144,91 +144,67 @@ def signup():
             return "Email already exists"
 
     return render_template("signup.html")
-
-
+    
 # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect("/login")
 
-    return render_template(
-        "dashboard.html",
-        error=session.pop("error", None),
-        image=session.pop("image", None),
-        prediction=session.pop("prediction", None),
-        confidence=session.pop("confidence", None),
-        prevention=session.pop("prevention", None)
-    )
+    return render_template("dashboard.html")
 
 # ================= UPLOAD + PREDICT =================
+# ================= UPLOAD DEBUG =================
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
+        print("STEP 1: Route triggered")
+
         if "user_id" not in session:
-            return redirect("/login")
+            print("STEP 2: No session")
+            return "NO SESSION"
 
         file = request.files.get("file")
 
         if not file or file.filename == "":
-            return redirect("/dashboard")
+            print("STEP 3: No file")
+            return "NO FILE SELECTED"
 
-        # ✅ PROCESS IMAGE DIRECTLY (NO SAVING)
-        img = Image.open(file).convert("RGB")
-        img = img.resize((224, 224))
-        img = np.array(img) / 255.0
-        img = np.expand_dims(img, axis=0)
+        print("STEP 4: File received:", file.filename)
 
-        # ✅ MODEL PREDICTION
-        preds = model.predict(img)
-        idx = np.argmax(preds[0])
+        # ✅ IMAGE PROCESSING TEST
+        try:
+            img = Image.open(file).convert("RGB")
+            print("STEP 5: Image opened")
 
-        prediction = class_names[idx]
-        confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
+            img = img.resize((224, 224))
+            print("STEP 6: Image resized")
 
-        prevention_dict = {
-            "Anthracnose": "Remove infected parts and use fungicide.",
-            "Black Pox": "Apply fungicide regularly.",
-            "Black Rot": "Prune affected areas.",
-            "Healthy": "No disease detected.",
-            "Powdery Mildew": "Use sulfur spray."
-        }
+            img = np.array(img) / 255.0
+            img = np.expand_dims(img, axis=0)
+            print("STEP 7: Image processed")
 
-        prevention = prevention_dict.get(prediction, "No advice")
+        except Exception as e:
+            print("❌ IMAGE ERROR:", e)
+            return f"IMAGE ERROR: {str(e)}"
 
-        # ❗ Optional: you can skip DB image saving OR keep dummy path
-        db_image_path = None
+        # ✅ MODEL TEST
+        try:
+            print("STEP 8: Starting model prediction")
 
-        # ✅ SAVE TO DB (without image path or with placeholder)
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
+            preds = model.predict(img)
 
-        cur.execute("""
-            INSERT INTO history (username, image, prediction, confidence, date)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            session["user_id"],
-            "N/A",
-            prediction,
-            confidence,
-            str(datetime.now())
-        ))
+            print("STEP 9: Model prediction done")
 
-        conn.commit()
-        conn.close()
+            return f"MODEL WORKING ✅ Prediction shape: {preds.shape}"
 
-        # ✅ RETURN RESULT
-        return render_template(
-            "dashboard.html",
-            image=None,
-            prediction=prediction,
-            confidence=confidence,
-            prevention=prevention
-        )
+        except Exception as e:
+            print("❌ MODEL ERROR:", e)
+            return f"MODEL ERROR: {str(e)}"
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
-
+        print("❌ UNKNOWN ERROR:", e)
+        return f"UNKNOWN ERROR: {str(e)}"
 # ================= HISTORY =================
 @app.route("/history")
 def history():
