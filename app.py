@@ -165,43 +165,26 @@ def dashboard():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        print("STEP 1: Route hit")
-
         if "user_id" not in session:
-            print("STEP 2: No session")
             return redirect("/login")
 
         file = request.files.get("file")
 
         if not file or file.filename == "":
-            print("STEP 3: No file")
             return redirect("/dashboard")
 
-        print("STEP 4: File received:", file.filename)
-
-        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-        filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-
-        file.save(filepath)
-        print("STEP 5: File saved")
-
-        img = Image.open(filepath).convert("RGB")
+        # ✅ PROCESS IMAGE DIRECTLY (NO SAVING)
+        img = Image.open(file).convert("RGB")
         img = img.resize((224, 224))
         img = np.array(img) / 255.0
         img = np.expand_dims(img, axis=0)
 
-        print("STEP 6: Image processed")
-
+        # ✅ MODEL PREDICTION
         preds = model.predict(img)
-        print("STEP 7: Prediction done")
-
         idx = np.argmax(preds[0])
+
         prediction = class_names[idx]
         confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
-
-        print("STEP 8:", prediction)
 
         prevention_dict = {
             "Anthracnose": "Remove infected parts and use fungicide.",
@@ -213,10 +196,10 @@ def upload():
 
         prevention = prevention_dict.get(prediction, "No advice")
 
-        db_image_path = "static/uploads/" + filename
+        # ❗ Optional: you can skip DB image saving OR keep dummy path
+        db_image_path = None
 
-        print("STEP 9: Before DB")
-
+        # ✅ SAVE TO DB (without image path or with placeholder)
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
@@ -225,7 +208,7 @@ def upload():
             VALUES (?, ?, ?, ?, ?)
         """, (
             session["user_id"],
-            db_image_path,
+            "N/A",
             prediction,
             confidence,
             str(datetime.now())
@@ -234,20 +217,17 @@ def upload():
         conn.commit()
         conn.close()
 
-        print("STEP 10: DB saved")
-
+        # ✅ RETURN RESULT
         return render_template(
             "dashboard.html",
-            image=db_image_path,
+            image=None,
             prediction=prediction,
             confidence=confidence,
             prevention=prevention
         )
 
     except Exception as e:
-        print("🔥 ERROR:", e)
-        return f"ERROR OCCURRED: {str(e)}"
-
+        return f"ERROR: {str(e)}"
 
 # ================= HISTORY =================
 @app.route("/history")
