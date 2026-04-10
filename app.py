@@ -147,6 +147,7 @@ def signup():
 
 
 # ================= DASHBOARD =================
+# ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -158,26 +159,40 @@ def dashboard():
 # ================= UPLOAD + PREDICT =================
 @app.route("/upload", methods=["POST"])
 def upload():
-    try:
-        if "user_id" not in session:
-            return redirect("/login")
+    if "user_id" not in session:
+        return redirect("/login")
 
+    try:
+        # ===== FILE CHECK =====
         file = request.files.get("file")
 
         if not file or file.filename == "":
-            return redirect("/dashboard")
+            return render_template("dashboard.html", error="❌ No file selected")
 
+        # ===== SAVE FILE =====
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + file.filename
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
         file.save(filepath)
 
-        # preprocess
-        img = Image.open(filepath).convert("RGB")
-        img = img.resize((224, 224))
-        img = np.array(img) / 255.0
-        img = np.expand_dims(img, axis=0)
+        if not os.path.exists(filepath):
+            return render_template("dashboard.html", error="❌ File not saved properly")
 
-        preds = model.predict(img)[0]
+        # ===== PREPROCESS =====
+        try:
+            img = Image.open(filepath).convert("RGB")
+            img = img.resize((224, 224))
+            img = np.array(img) / 255.0
+            img = np.expand_dims(img, axis=0)
+        except Exception as e:
+            return render_template("dashboard.html", error=f"❌ Image processing failed: {str(e)}")
+
+        # ===== MODEL PREDICTION =====
+        try:
+            preds = model.predict(img)[0]
+        except Exception as e:
+            return render_template("dashboard.html", error=f"❌ Model prediction failed: {str(e)}")
+
         idx = np.argmax(preds)
 
         prediction = class_names[idx]
@@ -195,25 +210,29 @@ def upload():
 
         db_image_path = "static/uploads/" + filename
 
-        # save DB
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
+        # ===== SAVE TO DB =====
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
 
-        cur.execute("""
-            INSERT INTO history (username, image, prediction, confidence, date)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            session["user_id"],
-            db_image_path,
-            prediction,
-            confidence,
-            str(datetime.now())
-        ))
+            cur.execute("""
+                INSERT INTO history (username, image, prediction, confidence, date)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                session["user_id"],
+                db_image_path,
+                prediction,
+                confidence,
+                str(datetime.now())
+            ))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
 
-        # show result safely
+        except Exception as e:
+            return render_template("dashboard.html", error=f"❌ Database error: {str(e)}")
+
+        # ===== SUCCESS RESULT =====
         return render_template(
             "dashboard.html",
             image=db_image_path,
@@ -223,8 +242,7 @@ def upload():
         )
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
-
+        return render_template("dashboard.html", error=f"❌ Unexpected error: {str(e)}")
 
 # ================= HISTORY =================
 @app.route("/history")
