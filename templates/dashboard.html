@@ -3,36 +3,11 @@
 
 <h2>Dashboard</h2>
 
-<!-- 🔴 ERROR DISPLAY -->
-{% if error %}
-<div class="card" style="background:#7f1d1d; color:white;">
-    <b>Error:</b> {{ error }}
-</div>
-{% endif %}
-
-<!-- 📤 UPLOAD -->
 <div class="card" style="max-width:500px; margin-bottom:20px;">
     <form method="POST" action="/upload" enctype="multipart/form-data">
         <input type="file" name="file" required>
         <button type="submit" class="btn-primary">Upload & Predict</button>
     </form>
 </div>
-
-<!-- ✅ RESULT -->
-{% if prediction %}
-<div class="card" style="text-align:center;">
-
-    <h2>Prediction Result</h2>
-
-    <img src="{{ image }}" width="220" style="border-radius:10px;">
-
-    <h3>Prediction: {{ prediction }}</h3>
-    <h4>Confidence: {{ confidence }}</h4>
-
-    <h4 style="margin-top:10px;">Prevention:</h4>
-    <p>{{ prevention }}</p>
-
-</div>
-{% endif %}
 
 {% endblock %}
