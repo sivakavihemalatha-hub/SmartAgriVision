@@ -90,6 +90,7 @@ Overall Accuracy: **87%**
 - Admin login
 - View all user predictions
 - Manage system history
+- Admin can delete user records from the database (history table) when required.
 - Monitor users
 
 ---
