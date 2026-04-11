@@ -5,7 +5,7 @@ from datetime import datetime
 
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite   # ✅ CHANGED
 
 app = Flask(__name__)
 app.secret_key = "secret_key"
@@ -20,27 +20,16 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ================= LOAD MODEL =================
-# ================= LOAD MODEL =================
-MODEL_PATH = os.path.join(BASE_DIR, "best_model.h5")
+# ================= LOAD TFLITE MODEL =================
+MODEL_PATH = os.path.join(BASE_DIR, "model.tflite")
 
-model = None  # IMPORTANT: prevents white page crash
+interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
 
-try:
-    model = tf.keras.models.load_model(
-        MODEL_PATH,
-        compile=False,
-        custom_objects={
-            "Dense": lambda **kwargs: tf.keras.layers.Dense(
-                **{k: v for k, v in kwargs.items() if k != "quantization_config"}
-            )
-        }
-    )
-    print("✅ Model loaded successfully")
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
-except Exception as e:
-    print("❌ Model loading failed:", str(e))
-    model = None
+print("✅ TFLite model loaded")
 
 class_names = ['Anthracnose', 'Black Pox', 'Black Rot', 'Healthy', 'Powdery Mildew']
 
@@ -69,7 +58,6 @@ def init_db():
         )
     """)
 
-    # default admin
     cur.execute("SELECT * FROM users WHERE email=?", ("admin@gmail.com",))
     if not cur.fetchone():
         cur.execute(
@@ -112,7 +100,7 @@ def login():
     return render_template("login.html")
 
 
-# ================= SIGNUP (AUTO LOGIN FIX) =================
+# ================= SIGNUP =================
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -134,7 +122,6 @@ def signup():
             conn.commit()
             conn.close()
 
-            # ✅ AUTO LOGIN
             session["user_id"] = email
             session["role"] = "user"
 
@@ -162,174 +149,59 @@ def dashboard():
 # ================= UPLOAD + PREDICT =================
 @app.route("/upload", methods=["POST"])
 def upload():
-    log = []
-
     try:
-        log.append("1. Request received")
-
-        # ✅ SESSION CHECK
         if "user_id" not in session:
-            log.append("❌ Session missing")
-            return "<br>".join(log)
+            return redirect("/login")
 
-        log.append("2. Session OK")
-
-        # ✅ FILE CHECK
         if "file" not in request.files:
-            log.append("❌ No file key")
-            return "<br>".join(log)
+            return redirect("/dashboard")
 
         file = request.files["file"]
 
         if file.filename == "":
-            log.append("❌ No file selected")
-            return "<br>".join(log)
+            return redirect("/dashboard")
 
-        log.append("3. File received: " + file.filename)
-
-        # ✅ MODEL CHECK
-        if model is None:
-            log.append("❌ MODEL NOT LOADED")
-            return "<br>".join(log)
-
-        log.append("4. Model loaded")
-
-        # ✅ IMAGE LOAD
-        try:
-            img = Image.open(file).convert("RGB")
-            log.append("5. Image opened")
-        except Exception as e:
-            log.append("❌ Image error: " + str(e))
-            return "<br>".join(log)
-
-        # ✅ RESIZE
+        # ✅ IMAGE PROCESS
+        img = Image.open(file).convert("RGB")
         img = img.resize((224, 224))
-        log.append("6. Image resized")
 
-        # ✅ ARRAY
         img_array = np.array(img) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
-        log.append("7. Array shape: " + str(img_array.shape))
+        img_array = np.expand_dims(img_array, axis=0).astype("float32")
 
-        # ✅ SAFE PREDICTION (MAIN FIX)
-        try:
-            preds = model.predict(img_array)
-            log.append("8. Prediction success")
-        except Exception as e:
-            log.append("❌ Prediction crash: " + str(e))
-            return "<br>".join(log)
+        # ✅ TFLITE PREDICTION
+        interpreter.set_tensor(input_details[0]['index'], img_array)
+        interpreter.invoke()
+        preds = interpreter.get_tensor(output_details[0]['index'])
 
-        # ✅ RESULT
-        try:
-            idx = np.argmax(preds[0])
-            prediction = class_names[idx]
-            confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
-            log.append("9. Prediction: " + prediction)
-            log.append("10. Confidence: " + confidence)
-        except Exception as e:
-            log.append("❌ Result error: " + str(e))
-            return "<br>".join(log)
+        idx = np.argmax(preds[0])
+        prediction = class_names[idx]
+        confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
+
+        prevention_dict = {
+            "Anthracnose": "Remove infected parts and use fungicide.",
+            "Black Pox": "Apply fungicide regularly.",
+            "Black Rot": "Prune affected areas.",
+            "Healthy": "No disease detected.",
+            "Powdery Mildew": "Use sulfur spray."
+        }
+
+        prevention = prevention_dict.get(prediction, "No advice")
 
         # ✅ SAVE IMAGE
-        try:
-            filename = datetime.now().strftime("%Y%m%d%H%M%S") + ".jpg"
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            img.save(filepath)
-            log.append("11. Image saved")
-        except Exception as e:
-            log.append("❌ Save error: " + str(e))
-            return "<br>".join(log)
+        filename = datetime.now().strftime("%Y%m%d%H%M%S") + ".jpg"
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        img.save(filepath)
 
-        log.append("✅ ALL STEPS SUCCESS")
-
-        return "<br>".join(log)
+        return render_template(
+            "dashboard.html",
+            image="static/uploads/" + filename,
+            prediction=prediction,
+            confidence=confidence,
+            prevention=prevention
+        )
 
     except Exception as e:
-        log.append("🔥 FINAL ERROR: " + str(e))
-        return "<br>".join(log)
-    
-# ================= HISTORY =================
-@app.route("/history")
-def history():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM history WHERE username=?", (session["user_id"],))
-    rows = cur.fetchall()
-
-    conn.close()
-
-    return render_template("history.html", history=rows)
-
-
-# ================= ADMIN =================
-@app.route("/admin")
-def admin():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    if session.get("role") != "admin":
-        return redirect("/dashboard")
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM history")
-    rows = cur.fetchall()
-
-    conn.close()
-
-    return render_template("all_history.html", data=rows)
-
-
-# ================= PROFILE =================
-@app.route("/profile")
-def profile():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    email = session["user_id"]
-    username = email.split("@")[0]
-
-    return render_template(
-        "profile.html",
-        username=username,
-        email=email,
-        profile_pic=session.get("profile_pic")
-    )
-
-
-# ================= PROFILE UPLOAD =================
-@app.route("/upload_profile", methods=["POST"])
-def upload_profile():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    file = request.files["photo"]
-
-    if file.filename == "":
-        return redirect("/profile")
-
-    filename = "profile_" + session["user_id"] + ".jpg"
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(filepath)
-
-    session["profile_pic"] = "static/uploads/" + filename
-
-    return redirect("/profile")
-
-
-# ================= LOGOUT =================
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
-
+        return f"ERROR: {str(e)}"
 
 # ================= RUN =================
 if __name__ == "__main__":
