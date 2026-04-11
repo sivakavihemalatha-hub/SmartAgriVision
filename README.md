@@ -56,7 +56,7 @@ Overall Accuracy: **87%**
 ## 🛠️ Technologies Used
 
 ### 🔹 Frontend:
-- HTML5
+- HTML
 - CSS
 - JavaScript
 
