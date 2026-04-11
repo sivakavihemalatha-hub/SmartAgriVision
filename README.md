@@ -1,79 +1,162 @@
-# 🍎 Apple Disease Detection using Deep Learning
+# 🍎 Apple Fruit Disease Detection System using Deep Learning
+
 <p align="center">
   <img src="Apple_demo.png" width="700">
 </p>
 
-## 📌 **Project Overview**
 
-This project is a deep learning-based system for detecting diseases in apple fruits.  
-It uses a pretrained EfficientNetB0 model to classify images into different disease categories.
+## 📌 Project Overview
+This project is an AI-based web application that detects diseases in apple fruits using Deep Learning (EfficientNet-based CNN model). Users can upload apple fruit images and the system predicts the disease along with confidence score and prevention steps.
+
+The system also includes user authentication, role-based access (Admin/User), prediction history, and profile management.
 
 ---
 
-## 🧠 Model Details
-- Model: EfficientNetB0 (Transfer Learning)
+## 🧠 Objective
+To help farmers and users identify apple fruit diseases at an early stage using an automated AI system, improving crop quality and reducing losses.
+
+---
+
+## 📊 Dataset Collection
+The dataset was collected from multiple sources:
+- Kaggle
+- Mendeley
+- Other agricultural image datasets
+
+It includes labeled images of apple fruits under different disease categories.
+
+---
+
+## 🤖 Machine Learning Model
+
+- Model Type: Convolutional Neural Network (CNN)
+- Architecture: EfficientNet-based model
 - Framework: TensorFlow / Keras
-- Input Size: 224x224
-- Training Strategy:
-  - Stage 1: Feature extraction (frozen base model)
-  - Stage 2: Fine-tuning (last layers unfrozen)
+- Training Platform: Google Colab
+- Model Format: `.keras`
 
----
-
-## 📊 Performance
+### 📈 Performance Metrics:
 - Training Accuracy: ~85%
 - Validation Accuracy: ~87%
-- Real-world accuracy: ~90% (approx)
+
+### 📊 Classification Report:
+
+| Class            | Precision | Recall | F1-score | Support |
+|------------------|----------|--------|----------|---------|
+| Anthracnose      | 0.66     | 0.75   | 0.70     | 69      |
+| Black Pox        | 0.97     | 0.97   | 0.97     | 92      |
+| Black Rot        | 0.82     | 0.74   | 0.78     | 134     |
+| Healthy          | 0.95     | 0.94   | 0.95     | 143     |
+| Powdery Mildew   | 0.91     | 0.94   | 0.92     | 104     |
+
+Overall Accuracy: **87%**
 
 ---
 
-## 🗂 Classes
-The model classifies apple images into the following categories:
-- Anthracnose
-- Black Pox
-- Black Rot
-- Healthy
-- Powdery Mildew
+## 🛠️ Technologies Used
+
+### 🔹 Frontend:
+- HTML5
+- CSS
+- JavaScript
+
+### 🔹 Backend:
+- Python (Flask Framework)
+- SQLite Database
+
+### 🔹 Machine Learning:
+- TensorFlow / Keras
+- EfficientNet
+- NumPy
+- PIL (Image Processing)
+
+### 🔹 Deployment:
+- Google Colab (Model Training)
+- Ngrok (Public Flask URL)
 
 ---
 
-## ⚙️ Features
-- Upload image and get prediction
-- High accuracy classification
-- Lightweight and efficient model
-- Can be integrated into web applications
+## 🌐 Web Application Features
+
+### 👤 User Features:
+- User Signup & Login
+- Upload apple fruit image
+- Get disease prediction
+- View prediction history
+- Profile management
+- Logout system
+
+### 🧑‍💼 Admin Features:
+- Admin login
+- View all user predictions
+- Manage system history
+- Monitor users
 
 ---
 
-## 🚀 How to Use
+## 🔁 System Workflow
 
-1. Load the trained model
-2. Upload an apple image
-3. Get predicted disease and confidence score
-
----
-
-## 📥 Model Download
-
-Due to file size limits, the trained model is stored on Google Drive:
-
-[Download Model](https://drive.google.com/file/d/1e0NICj3z4K9j7HiglSH8EQ6IZo8D2ZYX/view?usp=drive_link)
+1. User registers / logs in
+2. Uploads apple fruit image
+3. Image is preprocessed (224x224 resize + normalization)
+4. EfficientNet-based CNN model predicts disease
+5. Result is displayed with confidence score
+6. Data is stored in SQLite database
+7. User can view history in dashboard
 
 ---
 
-## 📁 Files in Repository
-- AppleDiseaseDetection.ipynb → Training and prediction code
-- README.md → Project documentation
+## 🧪 Model Pipeline
+
+- Input Image → Resize (224x224)
+- Preprocessing using EfficientNet
+- Feature extraction using CNN layers
+- Softmax classification
+- Output: Disease label + confidence
 
 ---
 
-## 🔮 Future Improvements
-- Web application with login system
-- User and admin dashboard
-- Database for storing prediction history
-- Mobile app integration
+## 🗄️ Database Design (SQLite)
+
+### Users Table:
+- id
+- email
+- password
+- role (admin/user)
+
+### History Table:
+- id
+- username (email)
+- image path
+- prediction
+- confidence
+- date
 
 ---
+
+## 🚀 Deployment
+
+- Flask backend hosted locally
+- Ngrok used for public URL access
+- Model trained in Google Colab
+- `.keras` model integrated into Flask
+
+---
+
+## 📸 User Interface (UI)
+
+The system includes:
+
+- Home Page
+- Login Page
+- Signup Page
+- Dashboard (Prediction screen)
+- History Page
+- Profile Page
+- Admin Panel
+
+---
+
 
 ## 👤 Author
 - HEMALATHA SIVAKAI
