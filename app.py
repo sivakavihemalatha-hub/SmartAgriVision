@@ -151,74 +151,114 @@ def dashboard():
     if "user_id" not in session:
         return redirect("/login")
 
-    return render_template("dashboard.html")
+    return render_template(
+        "dashboard.html",
+        prediction=None,
+        confidence=None,
+        prevention=None,
+        image=None
+    )
 
-# ================= UPLOAD + PREDICT =================
 # ================= UPLOAD + PREDICT =================
 @app.route("/upload", methods=["POST"])
 def upload():
-    try:
-        # ✅ CHECK SESSION
-        if "user_id" not in session:
-            return "SESSION ERROR"
+    log = []  # 🔥 step tracking
 
-        # ✅ CHECK FILE
+    try:
+        log.append("1. Request received")
+
+        # ✅ SESSION CHECK
+        if "user_id" not in session:
+            log.append("❌ Session missing")
+            return "<br>".join(log)
+
+        log.append("2. Session OK")
+
+        # ✅ FILE CHECK
         if "file" not in request.files:
-            return "NO FILE KEY"
+            log.append("❌ No file key")
+            return "<br>".join(log)
 
         file = request.files["file"]
 
         if file.filename == "":
-            return "NO FILE SELECTED"
+            log.append("❌ No file selected")
+            return "<br>".join(log)
 
-        # ✅ READ IMAGE
+        log.append("3. File received: " + file.filename)
+
+        # ✅ MODEL CHECK
+        if model is None:
+            log.append("❌ MODEL NOT LOADED")
+            return "<br>".join(log)
+
+        log.append("4. Model is loaded")
+
+        # ✅ IMAGE LOAD
         try:
-            img = Image.open(file.stream).convert("RGB")
+            img = Image.open(file).convert("RGB")
+            log.append("5. Image opened successfully")
         except Exception as e:
-            return f"IMAGE ERROR: {str(e)}"
+            log.append("❌ Image error: " + str(e))
+            return "<br>".join(log)
 
-        # ✅ PROCESS IMAGE
-        img = img.resize((224, 224))
-        img = np.array(img) / 255.0
-        img = np.expand_dims(img, axis=0)
-
-        print("IMAGE READY")
-
-        # ✅ MODEL PREDICTION (FIXED)
+        # ✅ RESIZE
         try:
-            import tensorflow as tf
+            img = img.resize((224, 224))
+            log.append("6. Image resized to 224x224")
+        except Exception as e:
+            log.append("❌ Resize error: " + str(e))
+            return "<br>".join(log)
 
-            with tf.device('/CPU:0'):
-                preds = model.predict(img, verbose=0)[0]
+        # ✅ ARRAY CONVERSION
+        try:
+            img_array = np.array(img) / 255.0
+            img_array = np.expand_dims(img_array, axis=0)
+            log.append("7. Image converted to array: " + str(img_array.shape))
+        except Exception as e:
+            log.append("❌ Array error: " + str(e))
+            return "<br>".join(log)
 
-            idx = np.argmax(preds)
+        # ✅ PREDICTION
+        try:
+            preds = model.predict(img_array, verbose=0)
+            log.append("8. Prediction done")
+            log.append("Raw output: " + str(preds))
+        except Exception as e:
+            log.append("❌ Prediction error: " + str(e))
+            return "<br>".join(log)
 
+        # ✅ RESULT EXTRACTION
+        try:
+            idx = np.argmax(preds[0])
             prediction = class_names[idx]
             confidence = str(round(float(np.max(preds)) * 100, 2)) + "%"
 
-            prevention_dict = {
-                "Anthracnose": "Remove infected parts and use fungicide.",
-                "Black Pox": "Apply fungicide regularly.",
-                "Black Rot": "Prune affected areas.",
-                "Healthy": "No disease detected.",
-                "Powdery Mildew": "Use sulfur spray."
-            }
-
-            prevention = prevention_dict.get(prediction, "No advice")
-
-            return render_template(
-                "dashboard.html",
-                image=None,
-                prediction=prediction,
-                confidence=confidence,
-                prevention=prevention
-            )
-
+            log.append(f"9. Prediction: {prediction}")
+            log.append(f"10. Confidence: {confidence}")
         except Exception as e:
-            return f"MODEL ERROR: {str(e)}"
+            log.append("❌ Result processing error: " + str(e))
+            return "<br>".join(log)
+
+        # ✅ SAVE IMAGE
+        try:
+            filename = datetime.now().strftime("%Y%m%d%H%M%S") + ".jpg"
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            img.save(filepath)
+            log.append("11. Image saved: " + filename)
+        except Exception as e:
+            log.append("❌ Save error: " + str(e))
+            return "<br>".join(log)
+
+        log.append("✅ ALL STEPS SUCCESS")
+
+        return "<br>".join(log)
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        log.append("🔥 FINAL ERROR: " + str(e))
+        return "<br>".join(log)
+        
+    
 # ================= HISTORY =================
 @app.route("/history")
 def history():
