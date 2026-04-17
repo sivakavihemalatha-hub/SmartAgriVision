@@ -88,17 +88,17 @@ It contains labeled images across the following classes:
 
 ### 🔹 Confusion Matrix
 <p align="center">
-  <img src="confusion_matrix.png" width="500">
+  <img src="Confusion_Matrix.png" width="500">
 </p>
 
 ### 🔹 Training vs Validation Accuracy
 <p align="center">
-  <img src="accuracy_plot.png" width="500">
+  <img src="Training_Validation_Accuracy.png" width="500">
 </p>
 
 ### 🔹 Training vs Validation Loss
 <p align="center">
-  <img src="loss_plot.png" width="500">
+  <img src="Training_validation_Loss.png" width="500">
 </p>
 
 ---
@@ -117,7 +117,7 @@ It contains labeled images across the following classes:
 - Admin login  
 - View all user predictions  
 - Manage system history  
-- Delete records from database  
+- Admin can delete records from all users' history. 
 - Monitor users  
 
 ---
